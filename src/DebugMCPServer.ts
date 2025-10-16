@@ -62,13 +62,13 @@ export class DebugMCPServer {
         // Start debugging tool
         this.server.addTool({
             name: 'start_debugging',
-            description: '⚠️ CRITICAL: First read debugmcp://docs/debug_instructions resource! Start a debug session for a source code file - requires breakpoints to be set first!',
+            description: '⚠️ CRITICAL: First read debugmcp://docs/debug_instructions resource! Start a debug session for a source code file',
             parameters: z.object({
                 fileFullPath: z.string().describe('Full path to the source code file to debug'),
                 workingDirectory: z.string().optional().describe('Working directory for the debug session (optional)'),
             }),
             execute: async (args: { fileFullPath: string; workingDirectory?: string }) => {
-                return await this.debuggingHandler.startDebugging(args);
+                return await this.debuggingHandler.handleStartDebugging(args);
             },
         });
 
@@ -77,7 +77,7 @@ export class DebugMCPServer {
             name: 'stop_debugging',
             description: 'Stop the current debug session',
             execute: async () => {
-                return await this.debuggingHandler.stopDebugging();
+                return await this.debuggingHandler.handleStopDebugging();
             },
         });
 
@@ -86,10 +86,10 @@ export class DebugMCPServer {
             name: 'step_over',
             description: 'Execute the next line(s) of code (step over function calls)',
             parameters: z.object({
-                steps: z.number().max(3).optional().default(1).describe('Number of steps to step over, default 1'),
+                steps: z.number().max(3).optional().default(1).describe('Number of steps to step over, default 1, maximum 3.'),
             }),
             execute: async (args: { steps?: number }) => {
-                return await this.debuggingHandler.stepOver(args);
+                return await this.debuggingHandler.handleStepOver(args);
             },
         });
 
@@ -98,7 +98,7 @@ export class DebugMCPServer {
             name: 'step_into',
             description: 'Step into the current function call',
             execute: async () => {
-                return await this.debuggingHandler.stepInto();
+                return await this.debuggingHandler.handleStepInto();
             },
         });
 
@@ -107,7 +107,7 @@ export class DebugMCPServer {
             name: 'step_out',
             description: 'Step out of the current function',
             execute: async () => {
-                return await this.debuggingHandler.stepOut();
+                return await this.debuggingHandler.handleStepOut();
             },
         });
 
@@ -116,7 +116,7 @@ export class DebugMCPServer {
             name: 'continue_execution',
             description: 'Continue execution until next breakpoint',
             execute: async () => {
-                return await this.debuggingHandler.continue();
+                return await this.debuggingHandler.handleContinue();
             },
         });
 
@@ -125,7 +125,7 @@ export class DebugMCPServer {
             name: 'restart_debugging',
             description: 'Restart the current debug session',
             execute: async () => {
-                return await this.debuggingHandler.restart();
+                return await this.debuggingHandler.handleRestart();
             },
         });
 
@@ -138,7 +138,7 @@ export class DebugMCPServer {
                 line: z.string().describe('Line content'),
             }),
             execute: async (args: { fileFullPath: string; line: string }) => {
-                return await this.debuggingHandler.addBreakpoint(args);
+                return await this.debuggingHandler.handleAddBreakpoint(args);
             },
         });
 
@@ -151,7 +151,7 @@ export class DebugMCPServer {
                 line: z.number().describe('Line number (1-based)'),
             }),
             execute: async (args: { fileFullPath: string; line: number }) => {
-                return await this.debuggingHandler.removeBreakpoint(args);
+                return await this.debuggingHandler.handleRemoveBreakpoint(args);
             },
         });
 
@@ -160,7 +160,7 @@ export class DebugMCPServer {
             name: 'list_breakpoints',
             description: 'List all active breakpoints',
             execute: async () => {
-                return await this.debuggingHandler.listBreakpoints();
+                return await this.debuggingHandler.handleListBreakpoints();
             },
         });
 
@@ -172,7 +172,7 @@ export class DebugMCPServer {
                 scope: z.enum(['local', 'global', 'all']).optional().describe("Variable scope: 'local', 'global', or 'all'"),
             }),
             execute: async (args: { scope?: 'local' | 'global' | 'all' }) => {
-                return await this.debuggingHandler.getVariables(args);
+                return await this.debuggingHandler.handleGetVariables(args);
             },
         });
 
@@ -184,7 +184,7 @@ export class DebugMCPServer {
                 expression: z.string().describe('Expression to evaluate in the current programming language context'),
             }),
             execute: async (args: { expression: string }) => {
-                return await this.debuggingHandler.evaluateExpression(args);
+                return await this.debuggingHandler.handleEvaluateExpression(args);
             },
         });
     }
@@ -207,30 +207,18 @@ export class DebugMCPServer {
             }
         });
 
-        this.server.addResource({
-            uri: 'debugmcp://docs/troubleshooting',
-            name: 'Debugging Troubleshooting Guide',
-            description: 'Common issues and solutions for debugging problems',
-            mimeType: 'text/markdown',
-            load: async () => {
-                const content = await this.loadMarkdownFile('troubleshooting.md');
-                return {
-                    text: content
-                };
-            }
-        });
-
         // Add language-specific resources
-        const languages = ['python', 'javascript', 'java'];
+        const languages = ['python', 'javascript', 'java', 'csharp'];
         const languageTitles = {
             'python': 'Python Debugging Tips',
             'javascript': 'JavaScript Debugging Tips',
-            'java': 'Java Debugging Tips'
+            'java': 'Java Debugging Tips',
+            'csharp': 'C# Debugging Tips'
         };
 
         languages.forEach(language => {
             this.server.addResource({
-                uri: `debugmcp://docs/languages/${language}`,
+                uri: `debugmcp://docs/troubleshooting/${language}`,
                 name: languageTitles[language as keyof typeof languageTitles],
                 description: `Debugging tips specific to ${language}`,
                 mimeType: 'text/markdown',
@@ -241,20 +229,6 @@ export class DebugMCPServer {
                     };
                 }
             });
-        });
-
-        // Add C# specific resource (kept for backwards compatibility)
-        this.server.addResource({
-            uri: 'debugmcp://docs/languages/csharp',
-            name: 'C# Debugging Configuration Guide',
-            description: 'C# Dev Kit configuration guide for external projects and unit tests',
-            mimeType: 'text/markdown',
-            load: async () => {
-                const content = await this.loadMarkdownFile('languages/csharp.md');
-                return {
-                    text: content
-                };
-            }
         });
     }
 

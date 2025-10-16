@@ -7,18 +7,18 @@ import { DebugState } from './DebugState';
  * Interface for debugging handler operations
  */
 export interface IDebuggingHandler {
-    startDebugging(args: { fileFullPath: string; workingDirectory?: string; configurationName?: string }): Promise<string>;
-    stopDebugging(): Promise<string>;
-    stepOver(args?: { steps?: number }): Promise<string>;
-    stepInto(): Promise<string>;
-    stepOut(): Promise<string>;
-    continue(): Promise<string>;
-    restart(): Promise<string>;
-    addBreakpoint(args: { fileFullPath: string; line: string }): Promise<string>;
-    removeBreakpoint(args: { fileFullPath: string; line: number }): Promise<string>;
-    listBreakpoints(): Promise<string>;
-    getVariables(args: { scope?: 'local' | 'global' | 'all' }): Promise<string>;
-    evaluateExpression(args: { expression: string }): Promise<string>;
+    handleStartDebugging(args: { fileFullPath: string; workingDirectory?: string; configurationName?: string }): Promise<string>;
+    handleStopDebugging(): Promise<string>;
+    handleStepOver(args?: { steps?: number }): Promise<string>;
+    handleStepInto(): Promise<string>;
+    handleStepOut(): Promise<string>;
+    handleContinue(): Promise<string>;
+    handleRestart(): Promise<string>;
+    handleAddBreakpoint(args: { fileFullPath: string; line: string }): Promise<string>;
+    handleRemoveBreakpoint(args: { fileFullPath: string; line: number }): Promise<string>;
+    handleListBreakpoints(): Promise<string>;
+    handleGetVariables(args: { scope?: 'local' | 'global' | 'all' }): Promise<string>;
+    handleEvaluateExpression(args: { expression: string }): Promise<string>;
 }
 
 /**
@@ -35,7 +35,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Start a debugging session
      */
-    public async startDebugging(args: { 
+    public async handleStartDebugging(args: { 
         fileFullPath: string; 
         workingDirectory?: string; 
         configurationName?: string; 
@@ -60,8 +60,10 @@ export class DebuggingHandler implements IDebuggingHandler {
 
             const started = await this.executor.startDebugging(workspaceFolder, debugConfig);
             if (started) {
+                // return also the current state
                 const configInfo = selectedConfigName ? ` using configuration '${selectedConfigName}'` : ' with default configuration';
-                return `Debug session started successfully for: ${fileFullPath}${configInfo}`;
+                const currentState = await this.executor.getCurrentDebugState(this.numNextLines);
+                return `Debug session started successfully for: ${fileFullPath}${configInfo}. Current state: ${JSON.stringify(currentState)}`;
             } else {
                 throw new Error('Failed to start debug session. Make sure the appropriate language extension is installed.');
             }
@@ -73,7 +75,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Stop the current debugging session
      */
-    public async stopDebugging(): Promise<string> {
+    public async handleStopDebugging(): Promise<string> {
         try {
             if (!this.executor.hasActiveSession()) {
                 return 'No active debug session to stop';
@@ -97,7 +99,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Execute step over command(s)
      */
-    public async stepOver(args?: { steps?: number }): Promise<string> {
+    public async handleStepOver(args?: { steps?: number }): Promise<string> {
         try {
             if (!this.executor.hasActiveSession()) {
                 throw new Error('No active debug session');
@@ -123,7 +125,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Execute step into command
      */
-    public async stepInto(): Promise<string> {
+    public async handleStepInto(): Promise<string> {
         try {
             if (!this.executor.hasActiveSession()) {
                 throw new Error('No active debug session');
@@ -144,7 +146,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Execute step out command
      */
-    public async stepOut(): Promise<string> {
+    public async handleStepOut(): Promise<string> {
         try {
             if (!this.executor.hasActiveSession()) {
                 throw new Error('No active debug session');
@@ -165,7 +167,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Continue execution
      */
-    public async continue(): Promise<string> {
+    public async handleContinue(): Promise<string> {
         try {
             if (!this.executor.hasActiveSession()) {
                 throw new Error('No active debug session');
@@ -186,7 +188,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Restart the debugging session
      */
-    public async restart(): Promise<string> {
+    public async handleRestart(): Promise<string> {
         try {
             if (!this.executor.hasActiveSession()) {
                 throw new Error('No active debug session to restart');
@@ -202,7 +204,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Add a breakpoint at specified location
      */
-    public async addBreakpoint(args: { fileFullPath: string; line: string }): Promise<string> {
+    public async handleAddBreakpoint(args: { fileFullPath: string; line: string }): Promise<string> {
         const { fileFullPath, line } = args;
         
         try {
@@ -243,7 +245,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Remove a breakpoint from specified location
      */
-    public async removeBreakpoint(args: { fileFullPath: string; line: number }): Promise<string> {
+    public async handleRemoveBreakpoint(args: { fileFullPath: string; line: number }): Promise<string> {
         const { fileFullPath, line } = args;
         
         try {
@@ -273,7 +275,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * List all active breakpoints
      */
-    public async listBreakpoints(): Promise<string> {
+    public async handleListBreakpoints(): Promise<string> {
         try {
             const breakpoints = this.executor.getBreakpoints();
             
@@ -301,7 +303,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Get variables from current debug context
      */
-    public async getVariables(args: { scope?: 'local' | 'global' | 'all' }): Promise<string> {
+    public async handleGetVariables(args: { scope?: 'local' | 'global' | 'all' }): Promise<string> {
         const { scope = 'all' } = args;
         
         try {
@@ -351,7 +353,7 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Evaluate an expression in current debug context
      */
-    public async evaluateExpression(args: { expression: string }): Promise<string> {
+    public async handleEvaluateExpression(args: { expression: string }): Promise<string> {
         const { expression } = args;
         
         try {
@@ -392,10 +394,14 @@ export class DebuggingHandler implements IDebuggingHandler {
 
         let output = 'Debug State:\n==========\n\n';
         
+        if (state.hasFrameName()) {
+            output += `Frame: ${state.frameName}\n`;
+        }
+        
         if (state.hasLocationInfo()) {
-            output += `Frame ID: ${state.frameId}\n`;
             output += `File: ${state.fileName}\n`;
-            output += `Line: ${state.currentLine}\n`;
+            output += `Line: ${state.currentLine}\n`;        
+            
             output += `${state.currentLine}: ${state.currentLineContent}\n`;
             
             // Show next few lines for context
@@ -407,7 +413,7 @@ export class DebuggingHandler implements IDebuggingHandler {
                 });
             }
         } else {
-            output += 'No location information available\n';
+            output += 'No location information available. The session might have ended\n';
         }
                 
         return output;
