@@ -1,4 +1,4 @@
-# C# Debugging Configuration Guide
+# C# Debugging Tips
 
 ## Overview
 DebugMCP provides enhanced support for debugging C# applications using the C# Dev Kit. This guide covers configuration options and best practices for C# debugging.
