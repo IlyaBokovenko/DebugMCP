@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { IDebuggingExecutor } from './DebuggingExecutor';
-import { IConfigurationManager } from './ConfigurationManager';
+import { IDebugConfigurationManager } from './utils/DebugConfigurationManager';
 import { DebugState } from './DebugState';
 
 /**
@@ -29,7 +29,7 @@ export class DebuggingHandler implements IDebuggingHandler {
 
     constructor(
         private readonly executor: IDebuggingExecutor,
-        private readonly configManager: IConfigurationManager
+        private readonly configManager: IDebugConfigurationManager
     ) {}
 
     /**

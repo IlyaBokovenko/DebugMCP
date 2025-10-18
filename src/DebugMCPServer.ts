@@ -223,7 +223,7 @@ export class DebugMCPServer {
                 description: `Debugging tips specific to ${language}`,
                 mimeType: 'text/markdown',
                 load: async () => {
-                    const content = await this.loadMarkdownFile(`languages/${language}.md`);
+                    const content = await this.loadMarkdownFile(`troubleshooting/${language}.md`);
                     return {
                         text: content
                     };
@@ -266,7 +266,6 @@ export class DebugMCPServer {
         });
 
         console.log(`DebugMCP FastMCP server started on port ${this.port}`);
-        vscode.window.showInformationMessage(`DebugMCP server running on http://localhost:${this.port}`);
     }
 
     /**
