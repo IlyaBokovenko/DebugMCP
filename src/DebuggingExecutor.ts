@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DebugState } from './DebugState';
+import { DebugState } from './debugState';
 
 /**
  * Interface for debugging execution operations

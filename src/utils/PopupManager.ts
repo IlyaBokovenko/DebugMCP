@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AgentConfigurationManager, AgentInfo } from './AgentConfigurationManager';
+import { AgentConfigurationManager, AgentInfo } from './agentConfigurationManager';
 
 export class PopupManager {
     private context: vscode.ExtensionContext;

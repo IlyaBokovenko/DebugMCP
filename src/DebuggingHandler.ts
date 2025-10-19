@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { IDebuggingExecutor } from './DebuggingExecutor';
-import { IDebugConfigurationManager } from './utils/DebugConfigurationManager';
-import { DebugState } from './DebugState';
+import { IDebugConfigurationManager } from './utils/debugConfigurationManager';
+import { DebugState } from './debugState';
+import { IDebuggingExecutor } from './debuggingExecutor';
 
 /**
  * Interface for debugging handler operations
