@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { DebugMCPServer } from './DebugMCPServer';
-import { PopupManager } from './utils/PopupManager';
+import { DebugMCPServer } from './debugMCPServer';
+import { PopupManager } from './utils/popupManager';
 
 let mcpServer: DebugMCPServer | null = null;
 let popupManager: PopupManager | null = null;
