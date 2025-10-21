@@ -8,14 +8,22 @@ import {
     DebuggingHandler,
     IDebuggingHandler
 } from '.';
+import { logger } from './utils/logger';
 
 // Dynamic import for FastMCP since it's an ES module
 let FastMCP: any;
 
 async function initializeFastMCP() {
     if (!FastMCP) {
-        const fastmcpModule = await import('fastmcp');
-        FastMCP = fastmcpModule.FastMCP;
+        try {
+            logger.info('Loading FastMCP module...');
+            const fastmcpModule = await import('fastmcp');
+            FastMCP = fastmcpModule.FastMCP;
+            logger.info('FastMCP module loaded successfully');
+        } catch (importError) {
+            logger.error('Failed to load FastMCP module', importError);
+            throw new Error(`Failed to import fastmcp module: ${importError}. This may be due to ES module compatibility issues in your environment.`);
+        }
     }
 }
 
@@ -290,12 +298,12 @@ export class DebugMCPServer {
         // First check if server is already running
         const isRunning = await this.isServerRunning();
         if (isRunning) {
-            console.log(`DebugMCP server is already running on port ${this.port}`);
+            logger.info(`DebugMCP server is already running on port ${this.port}`);
             return;
         }
         
         try {
-            console.log(`Starting DebugMCP server on port ${this.port}...`);
+            logger.info(`Starting DebugMCP server on port ${this.port}...`);
             
             await this.server.start({
                 transportType: 'httpStream',
@@ -304,10 +312,10 @@ export class DebugMCPServer {
                 },
             });
 
-            console.log(`DebugMCP FastMCP server started successfully on port ${this.port}`);
+            logger.info(`DebugMCP FastMCP server started successfully on port ${this.port}`);
             
         } catch (error) {
-            console.error(`Failed to start DebugMCP server:`, error);
+            logger.error(`Failed to start DebugMCP server`, error);
             throw new Error(`Failed to start DebugMCP server: ${error}`);
         }
     }

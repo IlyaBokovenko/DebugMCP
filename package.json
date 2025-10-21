@@ -29,8 +29,18 @@
         "category": "DebugMCP"
       },
       {
-        "command": "debugmcp.resetPopupState",
-        "title": "Reset Popup State (Development)",
+        "command": "debugmcp.showServerStatus",
+        "title": "Show Server Status",
+        "category": "DebugMCP"
+      },
+      {
+        "command": "debugmcp.openLogFile",
+        "title": "Open Log File",
+        "category": "DebugMCP"
+      },
+      {
+        "command": "debugmcp.clearLogs",
+        "title": "Clear Logs",
         "category": "DebugMCP"
       }
     ],
@@ -41,8 +51,16 @@
           "when": "true"
         },
         {
-          "command": "debugmcp.resetPopupState",
-          "when": "config.debugmcp.showDeveloperCommands == true"
+          "command": "debugmcp.showServerStatus",
+          "when": "true"
+        },
+        {
+          "command": "debugmcp.openLogFile",
+          "when": "true"
+        },
+        {
+          "command": "debugmcp.clearLogs",
+          "when": "true"
         }
       ]
     },
