@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { IDebugConfigurationManager } from './utils/debugConfigurationManager';
 import { DebugState } from './debugState';
 import { IDebuggingExecutor } from './debuggingExecutor';
+import { logger } from './utils/logger';
 
 /**
  * Interface for debugging handler operations
@@ -14,7 +15,7 @@ export interface IDebuggingHandler {
     handleStepOut(): Promise<string>;
     handleContinue(): Promise<string>;
     handleRestart(): Promise<string>;
-    handleAddBreakpoint(args: { fileFullPath: string; line: string }): Promise<string>;
+    handleAddBreakpoint(args: { fileFullPath: string; lineContent: string }): Promise<string>;
     handleRemoveBreakpoint(args: { fileFullPath: string; line: number }): Promise<string>;
     handleListBreakpoints(): Promise<string>;
     handleGetVariables(args: { scope?: 'local' | 'global' | 'all' }): Promise<string>;
@@ -26,6 +27,7 @@ export interface IDebuggingHandler {
  */
 export class DebuggingHandler implements IDebuggingHandler {
     private readonly numNextLines: number = 3;
+    private readonly executionDelay: number = 300; // ms to wait for debugger updates
 
     constructor(
         private readonly executor: IDebuggingExecutor,
@@ -60,6 +62,13 @@ export class DebuggingHandler implements IDebuggingHandler {
 
             const started = await this.executor.startDebugging(workspaceFolder, debugConfig);
             if (started) {
+                // Wait for debug session to become active using exponential backoff
+                const sessionActive = await this.waitForActiveDebugSession();
+                
+                if (!sessionActive) {
+                    throw new Error('Debug session started but failed to become active within timeout period');
+                }
+                
                 // return also the current state
                 const configInfo = selectedConfigName ? ` using configuration '${selectedConfigName}'` : ' with default configuration';
                 const currentState = await this.executor.getCurrentDebugState(this.numNextLines);
@@ -77,7 +86,7 @@ export class DebuggingHandler implements IDebuggingHandler {
      */
     public async handleStopDebugging(): Promise<string> {
         try {
-            if (!this.executor.hasActiveSession()) {
+            if (!(await this.executor.hasActiveSession())) {
                 return 'No active debug session to stop';
             }
 
@@ -105,12 +114,15 @@ export class DebuggingHandler implements IDebuggingHandler {
      */
     public async handleStepOver(args?: { steps?: number }): Promise<string> {
         try {
-            if (!this.executor.hasActiveSession()) {
-                throw new Error('No active debug session');
+            if (!(await this.executor.hasActiveSession())) {
+                throw new Error('Debug session is not ready. Please wait for initialization to complete.');
             }
 
             await this.executor.stepOver();
             
+            // Wait for debugger to update position
+            await new Promise(resolve => setTimeout(resolve, this.executionDelay));
+
             // Get the current debug state
             const debugState = await this.executor.getCurrentDebugState(this.numNextLines);
             
@@ -126,11 +138,14 @@ export class DebuggingHandler implements IDebuggingHandler {
      */
     public async handleStepInto(): Promise<string> {
         try {
-            if (!this.executor.hasActiveSession()) {
-                throw new Error('No active debug session');
+            if (!(await this.executor.hasActiveSession())) {
+                throw new Error('Debug session is not ready. Please wait for initialization to complete.');
             }
 
             await this.executor.stepInto();
+            
+            // Wait for debugger to update position
+            await new Promise(resolve => setTimeout(resolve, this.executionDelay));
             
             // Get the current debug state
             const debugState = await this.executor.getCurrentDebugState(this.numNextLines);
@@ -147,11 +162,14 @@ export class DebuggingHandler implements IDebuggingHandler {
      */
     public async handleStepOut(): Promise<string> {
         try {
-            if (!this.executor.hasActiveSession()) {
-                throw new Error('No active debug session');
+            if (!(await this.executor.hasActiveSession())) {
+                throw new Error('Debug session is not ready. Please wait for initialization to complete.');
             }
 
             await this.executor.stepOut();
+            
+            // Wait for debugger to update position
+            await new Promise(resolve => setTimeout(resolve, this.executionDelay));
             
             // Get the current debug state
             const debugState = await this.executor.getCurrentDebugState(this.numNextLines);
@@ -168,12 +186,15 @@ export class DebuggingHandler implements IDebuggingHandler {
      */
     public async handleContinue(): Promise<string> {
         try {
-            if (!this.executor.hasActiveSession()) {
-                throw new Error('No active debug session');
+            if (!(await this.executor.hasActiveSession())) {
+                throw new Error('Debug session is not ready. Please wait for initialization to complete.');
             }
 
             await this.executor.continue();
             
+            // Wait for debugger to update position
+            await new Promise(resolve => setTimeout(resolve, this.executionDelay));
+
             // Get the current debug state
             const debugState = await this.executor.getCurrentDebugState(this.numNextLines);
             
@@ -195,11 +216,15 @@ export class DebuggingHandler implements IDebuggingHandler {
      */
     public async handleRestart(): Promise<string> {
         try {
-            if (!this.executor.hasActiveSession()) {
+            if (!(await this.executor.hasActiveSession())) {
                 throw new Error('No active debug session to restart');
             }
 
             await this.executor.restart();
+            
+            // Wait for debugger to restart
+            await new Promise(resolve => setTimeout(resolve, this.executionDelay));
+
             return 'Debug session restarted successfully';
         } catch (error) {
             throw new Error(`Error restarting debug session: ${error}`);
@@ -209,8 +234,8 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Add a breakpoint at specified location
      */
-    public async handleAddBreakpoint(args: { fileFullPath: string; line: string }): Promise<string> {
-        const { fileFullPath, line } = args;
+    public async handleAddBreakpoint(args: { fileFullPath: string; lineContent: string }): Promise<string> {
+        const { fileFullPath, lineContent } = args;
         
         try {
             // Find the line number containing the line content
@@ -220,13 +245,13 @@ export class DebuggingHandler implements IDebuggingHandler {
             const matchingLineNumbers: number[] = [];
             
             for (let i = 0; i < lines.length; i++) {
-                if (lines[i].includes(line)) {
+                if (lines[i].includes(lineContent)) {
                     matchingLineNumbers.push(i + 1); // Convert to 1-based line numbers
                 }
             }
             
             if (matchingLineNumbers.length === 0) {
-                throw new Error(`Could not find any lines containing: ${line}`);
+                throw new Error(`Could not find any lines containing: ${lineContent}`);
             }
             
             const uri = vscode.Uri.file(fileFullPath);
@@ -312,8 +337,8 @@ export class DebuggingHandler implements IDebuggingHandler {
         const { scope = 'all' } = args;
         
         try {
-            if (!this.executor.hasActiveSession()) {
-                throw new Error('No active debug session. Start debugging first.');
+            if (!(await this.executor.hasActiveSession())) {
+                throw new Error('Debug session is not ready. Start debugging first and ensure execution is paused.');
             }
 
             const activeStackItem = vscode.debug.activeStackItem;
@@ -362,8 +387,8 @@ export class DebuggingHandler implements IDebuggingHandler {
         const { expression } = args;
         
         try {
-            if (!this.executor.hasActiveSession()) {
-                throw new Error('No active debug session. Start debugging first.');
+            if (!(await this.executor.hasActiveSession())) {
+                throw new Error('Debug session is not ready. Start debugging first and ensure execution is paused.');
             }
 
             const activeStackItem = vscode.debug.activeStackItem;
@@ -434,8 +459,37 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Check if debugging session is active
      */
-    public isDebuggingActive(): boolean {
-        return this.executor.hasActiveSession();
+    public async isDebuggingActive(): Promise<boolean> {
+        return await this.executor.hasActiveSession();
+    }
+
+    /**
+     * Wait for debug session to become active using exponential backoff starting from 1 second
+     */
+    private async waitForActiveDebugSession(): Promise<boolean> {
+        const baseDelay = 1000; // Start with 1 second
+        const maxDelay = 60000; // Cap at 1 minute (60 seconds)
+        const maxTotalTime = 60000; // Total timeout of 1 minute
+        
+        const startTime = Date.now();
+        let attempt = 0;
+        
+        while (Date.now() - startTime < maxTotalTime) {
+            if (await this.executor.hasActiveSession()) {
+                return true;
+            }
+            
+            logger.info(`[Attempt ${attempt + 1}] Waiting for debug session to become active...`);
+
+            // Calculate delay using exponential backoff with jitter
+            const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+            const jitteredDelay = delay + Math.random() * 200; // Add up to 200ms jitter
+            
+            await new Promise(resolve => setTimeout(resolve, jitteredDelay));
+            attempt++;
+        }
+        
+        return false; // Timeout reached
     }
 
     /**

@@ -27,7 +27,7 @@ export class AgentConfigurationManager {
     private static readonly DEBUGMCP_CONFIG: MCPServerConfig = {
         autoApprove: [],
         disabled: false,
-        timeout: 60,
+        timeout: 120,
         type: "sse",
         url: "http://localhost:3001/sse"
     };

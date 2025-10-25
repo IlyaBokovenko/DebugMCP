@@ -140,9 +140,9 @@ export class DebugMCPServer {
             description: 'Add a breakpoint at a specific code line.',
             parameters: z.object({
                 fileFullPath: z.string().describe('Full path to the file'),
-                line: z.string().describe('Line content'),
+                lineContent: z.string().describe('Line content'),
             }),
-            execute: async (args: { fileFullPath: string; line: string }) => {
+            execute: async (args: { fileFullPath: string; lineContent: string }) => {
                 return await this.debuggingHandler.handleAddBreakpoint(args);
             },
         });

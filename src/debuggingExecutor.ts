@@ -19,7 +19,7 @@ export interface IDebuggingExecutor {
     evaluateExpression(expression: string, frameId: number): Promise<any>;
     getBreakpoints(): readonly vscode.Breakpoint[];
     clearAllBreakpoints(): void;
-    hasActiveSession(): boolean;
+    hasActiveSession(): Promise<boolean>;
     getActiveSession(): vscode.DebugSession | undefined;
 }
 
@@ -27,7 +27,6 @@ export interface IDebuggingExecutor {
  * Responsible for executing VS Code debugging commands and managing debug sessions
  */
 export class DebuggingExecutor implements IDebuggingExecutor {
-    private readonly executionDelay: number = 300; // ms to wait for debugger updates
 
     /**
      * Start a debugging session
@@ -41,9 +40,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
                 // Open the specific test file instead of the workspace folder
                 const testFileUri = vscode.Uri.file(config.program);
                 await vscode.commands.executeCommand('vscode.open', testFileUri);
-                // TODO: await doesn't work, consider adding a delay
                 vscode.commands.executeCommand('testing.debugCurrentFile');
-                await new Promise(resolve => setTimeout(resolve, 1000 * 40));
                 return true;
             }
             return await vscode.debug.startDebugging(workspaceFolder, config);
@@ -71,7 +68,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
      */
     public async stepOver(): Promise<void> {
         try {
-            await this.executeDebugCommand('workbench.action.debug.stepOver');
+            await vscode.commands.executeCommand('workbench.action.debug.stepOver');
         } catch (error) {
             throw new Error(`Failed to step over: ${error}`);
         }
@@ -82,7 +79,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
      */
     public async stepInto(): Promise<void> {
         try {
-            await this.executeDebugCommand('workbench.action.debug.stepInto');
+            await vscode.commands.executeCommand('workbench.action.debug.stepInto');
         } catch (error) {
             throw new Error(`Failed to step into: ${error}`);
         }
@@ -93,7 +90,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
      */
     public async stepOut(): Promise<void> {
         try {
-            await this.executeDebugCommand('workbench.action.debug.stepOut');
+            await vscode.commands.executeCommand('workbench.action.debug.stepOut');
         } catch (error) {
             throw new Error(`Failed to step out: ${error}`);
         }
@@ -104,7 +101,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
      */
     public async continue(): Promise<void> {
         try {
-            await this.executeDebugCommand('workbench.action.debug.continue');
+            await vscode.commands.executeCommand('workbench.action.debug.continue');
         } catch (error) {
             throw new Error(`Failed to continue: ${error}`);
         }
@@ -115,7 +112,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
      */
     public async restart(): Promise<void> {
         try {
-            await this.executeDebugCommand('workbench.action.debug.restart');
+            await vscode.commands.executeCommand('workbench.action.debug.restart');
         } catch (error) {
             throw new Error(`Failed to restart: ${error}`);
         }
@@ -294,20 +291,6 @@ export class DebuggingExecutor implements IDebuggingExecutor {
         }
     }
 
-    /**
-     * Execute a debug command and wait for the debugger to update
-     */
-    private async executeDebugCommand(command: string): Promise<void> {
-        const activeSession = vscode.debug.activeDebugSession;
-        if (!activeSession) {
-            throw new Error('No active debug session');
-        }
-
-        await vscode.commands.executeCommand(command);
-        
-        // Wait for debugger to update position
-        await new Promise(resolve => setTimeout(resolve, this.executionDelay));
-    }
 
     /**
      * Get all active breakpoints
@@ -327,10 +310,27 @@ export class DebuggingExecutor implements IDebuggingExecutor {
     }
 
     /**
-     * Check if there's an active debug session
+     * Check if there's an active debug session that is ready for debugging operations
      */
-    public hasActiveSession(): boolean {
-        return vscode.debug.activeDebugSession !== undefined;
+    public async hasActiveSession(): Promise<boolean> {
+        // Quick check first - no session at all
+        if (!vscode.debug.activeDebugSession) {
+            return false;
+        }
+
+        try {
+            // Get the current debug state and check if it has location information
+            // This is the most reliable way to determine if the debugger is truly ready
+            const debugState = await this.getCurrentDebugState();
+            
+            // A session is ready when it has location info (file name and line number)
+            // This means the debugger has attached and we can see where we are in the code
+            return debugState.sessionActive && debugState.hasLocationInfo();
+        } catch (error) {
+            // Any error means session isn't ready (e.g., Python still initializing)
+            console.log('Session readiness check failed:', error);
+            return false;
+        }
     }
 
     /**
