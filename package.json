@@ -27,21 +27,6 @@
         "command": "debugmcp.showAgentSelectionPopup",
         "title": "Show Agent Selection Popup",
         "category": "DebugMCP"
-      },
-      {
-        "command": "debugmcp.showServerStatus",
-        "title": "Show Server Status",
-        "category": "DebugMCP"
-      },
-      {
-        "command": "debugmcp.openLogFile",
-        "title": "Open Log File",
-        "category": "DebugMCP"
-      },
-      {
-        "command": "debugmcp.clearLogs",
-        "title": "Clear Logs",
-        "category": "DebugMCP"
       }
     ],
     "menus": {
@@ -49,29 +34,12 @@
         {
           "command": "debugmcp.showAgentSelectionPopup",
           "when": "true"
-        },
-        {
-          "command": "debugmcp.showServerStatus",
-          "when": "true"
-        },
-        {
-          "command": "debugmcp.openLogFile",
-          "when": "true"
-        },
-        {
-          "command": "debugmcp.clearLogs",
-          "when": "true"
         }
       ]
     },
     "configuration": {
       "title": "DebugMCP",
       "properties": {
-        "debugmcp.showDeveloperCommands": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show developer/testing commands in the command palette"
-        },
         "debugmcp.timeoutInSeconds": {
           "type": "number",
           "default": 180,

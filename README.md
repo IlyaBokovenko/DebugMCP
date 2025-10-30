@@ -13,6 +13,7 @@ A VSCode extension that provides multi-language debugging capabilities and autom
 ### MCP Server Features
 - **Automatic Registration**: When the extension is installed, it automatically becomes available as an MCP server
 - **Full Debug Control**: All debugging operations are accessible via MCP tools
+- **Self-Context Management**: The server tracks the debugging state and consistently injects it to the agent context.
 - **No Additional Setup**: No need to clone repositories or install separate servers
 
 ## Installation
@@ -24,7 +25,9 @@ A VSCode extension that provides multi-language debugging capabilities and autom
 
 > **Tip**: For efficient debugging sessions, it's recommended to enable auto-approval for all tools in your AI assistant to avoid interruptions during step-by-step debugging operations.
 
-### For Cline (VSCode Extension)
+### Manaul MCP server registration
+
+#### Cline
 Add to your Cline settings or `cline_mcp_settings.json`:
 ```json
 {
@@ -37,7 +40,7 @@ Add to your Cline settings or `cline_mcp_settings.json`:
 }
 ```
 
-### For GitHub Copilot
+#### GitHub Copilot
 Add to your Copilot workspace settings (`.vscode/settings.json`):
 ```json
 {
@@ -50,7 +53,7 @@ Add to your Copilot workspace settings (`.vscode/settings.json`):
 }
 ```
 
-### For Roo Code
+#### Roo Code
 Add to Roo's MCP settings:
 ```json
 {
@@ -147,7 +150,9 @@ This extension is designed to be minimal - it only starts the MCP server when ac
 The extension consists of several key components:
 
 1. **Main Extension** (`src/extension.ts`) - Handles VSCode integration and command registration
-2. **MCP Server** (`src/mcpServer.ts`) - Implements the MCP protocol with full VSCode API access
+2. **MCP Server** (`src/debugMCPServer.ts`) - Implements the MCP protocol with full debugging capabilities
+2. **Debugging Handler** (`src.debuggingHandler.ts`) - Context and state management over the VS Code debugging capabilities.
+2. **Debugging Executor** (`src/debuggingExecutor.ts`) - Executes the debugging commands by using VS Code API directly.
 
 ## Development
 
