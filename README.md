@@ -53,8 +53,8 @@ DebugMCP follows systematic debugging practices for effective issue resolution:
 
 ### 🛡️ Security & Reliability
 - **Secure Communication**: All MCP communications use secure protocols
+- **Local Operation**: The MCP server runs 100% locally with no external communications and requires no credentials
 - **State Validation**: Robust validation of debugging states and operations
-- **Error Recovery**: Automatic recovery from common debugging failures
 
 ## Installation
 
@@ -70,6 +70,8 @@ After installation, you should see:
 - DebugMCP extension in your installed extensions
 - MCP server automatically running on port 3001 (configurable)
 - Debug tools available to connected AI assistants
+
+> **📝 Note**: No additional debugging rule instructions are needed - the extension works out of the box.
 
 > **💡 Tip**: Enable auto-approval for all debugmcp tools in your AI assistant to create seamless debugging workflows without constant approval interruptions.
 
