@@ -2,6 +2,8 @@
 
 A VSCode extension that provides comprehensive multi-language debugging capabilities and automatically exposes itself as an MCP (Model Context Protocol) server for seamless integration with AI assistants.
 
+> **📢 Beta Version Notice**: This is a beta version of DebugMCP maintained by [ozzafar@microsoft.com](mailto:ozzafar@microsoft.com) and [orbarila@microsoft.com](mailto:orbarila@microsoft.com). We welcome feedback and contributions to help improve this extension.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.104.0+-blue.svg)](https://code.visualstudio.com/)
 [![Version](https://img.shields.io/badge/version-1.0.1-green.svg)](https://github.com/microsoft/DebugMCP)
@@ -20,8 +22,6 @@ A VSCode extension that provides comprehensive multi-language debugging capabili
 ## Overview
 
 DebugMCP bridges the gap between professional debugging and AI-assisted development by providing a powerful debugging interface that AI assistants can use to help you identify and fix issues in your code. DebugMCP enables AI assistants to perform sophisticated debugging operations on your behalf.
-
-> **📢 Beta Version Notice**: This is a beta version of DebugMCP maintained by [ozzafar@microsoft.com](mailto:ozzafar@microsoft.com). We welcome feedback and contributions to help improve this extension.
 
 ## Features
 
@@ -251,3 +251,6 @@ Any use of third-party trademarks or logos are subject to those third-party's po
 ## License
 
 MIT License - See [LICENSE](LICENSE.txt) for details
+
+This extension was created by **Oz Zafar**, **Ori Bar-Ilan** and **Karin Brisker**.
+
