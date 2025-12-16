@@ -24,7 +24,6 @@ export interface MCPServerConfig {
 export class AgentConfigurationManager {
     private context: vscode.ExtensionContext;
     private readonly POPUP_SHOWN_KEY = 'debugmcp.popupShown';
-    private readonly SKIP_POPUP_KEY = 'debugmcp.skipPopup';
     private readonly timeoutInSeconds: number;
     private readonly serverPort: number;
     
@@ -39,14 +38,9 @@ export class AgentConfigurationManager {
      * Check if we should show the post-install popup
      */
     public async shouldShowPopup(): Promise<boolean> {
-        // Check if user chose to skip popup permanently
-        const skipPopup = this.context.globalState.get<boolean>(this.SKIP_POPUP_KEY, false);
-        if (skipPopup) {
-            return false;
-        }
-
-        // Always show popup on every activation (unless user chose "Don't show again")
-        return true;
+        // Check if popup has already been shown
+        const popupShown = this.context.globalState.get<boolean>(this.POPUP_SHOWN_KEY, false);
+        return !popupShown;
     }
 
     /**
@@ -70,7 +64,6 @@ export class AgentConfigurationManager {
      */
     public async resetPopupState(): Promise<void> {
         await this.context.globalState.update(this.POPUP_SHOWN_KEY, false);
-        await this.context.globalState.update(this.SKIP_POPUP_KEY, false);
     }
 
     /**
@@ -231,12 +224,6 @@ export class AgentConfigurationManager {
             });
         });
 
-        items.push({
-            label: `$(circle-slash) Don't show again`,
-            description: 'Skip setup and don\'t show this popup again',
-            detail: 'You can still configure DebugMCP manually later',
-            picked: false
-        });
 
         const quickPick = vscode.window.createQuickPick();
         quickPick.title = 'DebugMCP Setup - Choose AI Agent to Configure';
@@ -249,24 +236,18 @@ export class AgentConfigurationManager {
             const selectedItem = quickPick.selectedItems[0];
             quickPick.hide();
 
-            if (selectedItem) {
-                if (selectedItem.label.includes('Skip for now')) {
-                    // User chose to skip
-                    return;
-                } else if (selectedItem.label.includes('Don\'t show again')) {
-                    // User chose to not show again
-                    await this.context.globalState.update(this.SKIP_POPUP_KEY, true);
-                    return;
-                } else if (selectedItem.label.includes('Configure')) {
-                    // User selected an agent to configure
-                    const agentDisplayName = selectedItem.detail;
-                    const agent = agents.find(a => a.displayName === agentDisplayName);
-                    
-                    if (agent) {
-                        await this.configureAgent(agent);
-                    }
+            if (selectedItem && selectedItem.label.includes('Configure')) {
+                // User selected an agent to configure
+                const agentDisplayName = selectedItem.detail;
+                const agent = agents.find(a => a.displayName === agentDisplayName);
+                
+                if (agent) {
+                    await this.configureAgent(agent);
                 }
             }
+            
+            // Mark popup as shown after user interacts with it
+            await this.context.globalState.update(this.POPUP_SHOWN_KEY, true);
         });
 
         quickPick.onDidHide(() => quickPick.dispose());
@@ -278,22 +259,7 @@ export class AgentConfigurationManager {
      */
     private async configureAgent(agent: AgentInfo): Promise<void> {
         try {
-            
-            const success = await this.addDebugMCPToAgent(agent);
-            
-            if (success) {
-                const restartMessage = await vscode.window.showInformationMessage(
-                    `✅ DebugMCP has been configured for ${agent.displayName}!`,
-                    'Open Config File',
-                    'Got it'
-                );
-
-                if (restartMessage === 'Open Config File') {
-                    // Open the config file to show what was added
-                    const doc = await vscode.workspace.openTextDocument(agent.configPath);
-                    await vscode.window.showTextDocument(doc);
-                }
-            }
+            await this.addDebugMCPToAgent(agent);
         } catch (error) {
             console.error(`Error configuring ${agent.name}:`, error);
             vscode.window.showErrorMessage(`Failed to configure ${agent.displayName}: ${error}`);
