@@ -81,15 +81,11 @@ export class DebugMCPServer {
                          '\n• Functions return incorrect results' +
                          '\n• Code behaves differently than expected' +
                          '\n• User reports \"it doesn\'t work\"' +
-                         '\n\n🧪 TEST DEBUGGING:' +
-                         '\n• Debug a specific test by providing the testName parameter' +
-                         '\n• Omit testName to debug the entire file' +
-                         '\n• Supports pytest, Jest, Mocha, JUnit, xUnit, NUnit, MSTest' +
                          '\n\n⚠️ CRITICAL: Before using this tool, first read debugmcp://docs/debug_instructions resource!',
             parameters: z.object({
                 fileFullPath: z.string().describe('Full path to the source code file to debug'),
                 workingDirectory: z.string().optional().describe('Working directory for the debug session (optional)'),
-                testName: z.string().optional().describe('Name of the specific test function/method to debug (e.g., "test_user_login" for Python, "should validate email" for Jest). Omit to debug the entire file.'),
+                testName: z.string().optional().describe('Name of the specific test name to debug.'),
             }),
             execute: async (args: { fileFullPath: string; workingDirectory?: string; testName?: string }) => {
                 return await this.debuggingHandler.handleStartDebugging(args);

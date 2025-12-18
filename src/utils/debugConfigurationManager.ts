@@ -2,6 +2,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * Interface for configuration management operations
@@ -11,7 +12,8 @@ export interface IDebugConfigurationManager {
         workspaceFolder: vscode.WorkspaceFolder, 
         fileFullPath: string, 
         workingDirectory?: string, 
-        configurationName?: string
+        configurationName?: string,
+        testName?: string
     ): Promise<vscode.DebugConfiguration>;
     promptForConfiguration(workspaceFolder: vscode.WorkspaceFolder): Promise<string | undefined>;
     detectLanguageFromFilePath(fileFullPath: string): string;
@@ -30,10 +32,11 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
         workspaceFolder: vscode.WorkspaceFolder,
         fileFullPath: string,
         workingDirectory?: string,
-        configurationName?: string
+        configurationName?: string,
+        testName?: string
     ): Promise<vscode.DebugConfiguration> {
         if (configurationName === DebugConfigurationManager.AUTO_LAUNCH_CONFIG) {
-            return this.createDefaultDebugConfig(fileFullPath, workingDirectory, workspaceFolder);
+            return this.createDefaultDebugConfig(fileFullPath, workingDirectory, workspaceFolder, testName);
         }
 
         try {
@@ -68,7 +71,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
         }
 
         // Fallback: always return a default configuration if nothing else matched
-        return this.createDefaultDebugConfig(fileFullPath, workingDirectory, workspaceFolder);
+        return this.createDefaultDebugConfig(fileFullPath, workingDirectory, workspaceFolder, testName);
     }
 
     /**
@@ -161,13 +164,20 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
     /**
      * Create a default debug configuration based on file type
      */
-    private createDefaultDebugConfig(
+    private async createDefaultDebugConfig(
         fileFullPath: string, 
         workingDirectory: string | undefined, 
-        workspaceFolder: vscode.WorkspaceFolder
-    ): vscode.DebugConfiguration {
+        workspaceFolder: vscode.WorkspaceFolder,
+        testName?: string
+    ): Promise<vscode.DebugConfiguration> {
         const detectedLanguage = this.detectLanguageFromFilePath(fileFullPath);
+        const cwd = workingDirectory || workspaceFolder.uri.fsPath;
         
+        // Build test-specific configurations based on language
+        if (testName && detectedLanguage != 'coreclr') {
+            return await this.createTestDebugConfig(detectedLanguage, fileFullPath, cwd, testName);
+        }
+
         const configs: { [key: string]: vscode.DebugConfiguration } = {
             python: {
                 type: 'python',
@@ -175,7 +185,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
                 name: 'DebugMCP Python Launch',
                 program: fileFullPath,
                 console: 'integratedTerminal',
-                cwd: workingDirectory || workspaceFolder.uri.fsPath,
+                cwd: cwd,
                 env: {},
                 stopOnEntry: false
             },
@@ -185,7 +195,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
                 name: 'DebugMCP Node.js Launch',
                 program: fileFullPath,
                 console: 'integratedTerminal',
-                cwd: workingDirectory || workspaceFolder.uri.fsPath,
+                cwd: cwd,
                 env: {},
                 stopOnEntry: false
             },
@@ -195,7 +205,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
                 name: 'DebugMCP Java Launch',
                 mainClass: path.basename(fileFullPath, path.extname(fileFullPath)),
                 console: 'integratedTerminal',
-                cwd: workingDirectory || workspaceFolder.uri.fsPath
+                cwd: cwd
             },
             coreclr: {
                 type: 'coreclr',
@@ -203,7 +213,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
                 name: 'DebugMCP .NET Launch',
                 program: fileFullPath,
                 console: 'integratedTerminal',
-                cwd: workingDirectory || workspaceFolder.uri.fsPath,
+                cwd: cwd,
                 stopAtEntry: false
             },
             cppdbg: {
@@ -211,7 +221,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
                 request: 'launch',
                 name: 'DebugMCP C++ Launch',
                 program: fileFullPath.replace(/\.(cpp|cc|c)$/, ''),
-                cwd: workingDirectory || workspaceFolder.uri.fsPath,
+                cwd: cwd,
                 console: 'integratedTerminal'
             },
             go: {
@@ -220,7 +230,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
                 name: 'DebugMCP Go Launch',
                 mode: 'debug',
                 program: fileFullPath,
-                cwd: workingDirectory || workspaceFolder.uri.fsPath
+                cwd: cwd
             }
         };
 
@@ -274,6 +284,164 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
             return true;
         } catch (error) {
             return false;
+        }
+    }
+
+    /**
+     * Extract the class name from a Python test file
+     * Assumes only one test class per file
+     */
+    private async extractPythonClassName(fileFullPath: string): Promise<string | null> {
+        try {
+            const content = await fs.promises.readFile(fileFullPath, 'utf8');
+            // Match Python class definition: class ClassName or class ClassName(BaseClass)
+            // Looks for classes starting with capital letter (test classes typically follow this pattern)
+            const classMatch = content.match(/class\s+([A-Z][a-zA-Z0-9_]*)/);
+            return classMatch ? classMatch[1] : null;
+        } catch (error) {
+            console.log('Error extracting class name from Python file:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Format Python test name by auto-detecting class name if needed
+     * Supports both class-based tests and standalone test functions
+     */
+    private async formatPythonTestName(fileFullPath: string, testName: string): Promise<string> {
+        const moduleName = path.basename(fileFullPath, '.py');
+        
+        // If testName already contains a dot, assume it's in ClassName.method format
+        if (testName.includes('.')) {
+            return `${moduleName}.${testName}`;
+        }
+        
+        // Otherwise, try to extract the class name from the file
+        const className = await this.extractPythonClassName(fileFullPath);
+        if (className) {
+            // Found a class, format as module.ClassName.testMethod
+            return `${moduleName}.${className}.${testName}`;
+        }
+        
+        // No class found, assume it's a standalone test function
+        return `${moduleName}.${testName}`;
+    }
+
+    /**
+     * Create a debug configuration specifically for running tests
+     */
+    private async createTestDebugConfig(
+        language: string,
+        fileFullPath: string,
+        cwd: string,
+        testName: string
+    ): Promise<vscode.DebugConfiguration> {
+        const fileName = path.basename(fileFullPath);
+
+        switch (language) {
+            case 'python':
+                // Auto-detect class name and format test name appropriately
+                const formattedTestName = await this.formatPythonTestName(fileFullPath, testName);
+                
+                return {
+                    type: 'python',
+                    request: 'launch',
+                    name: `DebugMCP Python Test: ${testName}`,
+                    module: 'unittest',
+                    args: [
+                        formattedTestName,
+                        '-v'
+                    ],
+                    console: 'integratedTerminal',
+                    cwd: cwd,
+                    env: {},
+                    stopOnEntry: false,
+                    justMyCode: false,
+                    purpose: ['debug-test']
+                };
+
+            case 'node':
+                // Support for Jest, Mocha, and other Node.js test frameworks
+                // Try to detect which test framework based on common patterns
+                const isJest = fileName.includes('.test.') || fileName.includes('.spec.');
+                
+                if (isJest) {
+                    // Jest configuration
+                    return {
+                        type: 'pwa-node',
+                        request: 'launch',
+                        name: `DebugMCP Jest Test: ${testName}`,
+                        program: '${workspaceFolder}/node_modules/.bin/jest',
+                        args: [
+                            '--testNamePattern', testName,
+                            '--runInBand',
+                            fileFullPath
+                        ],
+                        console: 'integratedTerminal',
+                        cwd: cwd,
+                        env: {},
+                        stopOnEntry: false
+                    };
+                } else {
+                    // Mocha configuration
+                    return {
+                        type: 'pwa-node',
+                        request: 'launch',
+                        name: `DebugMCP Mocha Test: ${testName}`,
+                        program: '${workspaceFolder}/node_modules/.bin/mocha',
+                        args: [
+                            '--grep', testName,
+                            fileFullPath
+                        ],
+                        console: 'integratedTerminal',
+                        cwd: cwd,
+                        env: {},
+                        stopOnEntry: false
+                    };
+                }
+
+            case 'java':
+                // JUnit test configuration
+                const className = path.basename(fileFullPath, path.extname(fileFullPath));
+                return {
+                    type: 'java',
+                    request: 'launch',
+                    name: `DebugMCP JUnit Test: ${testName}`,
+                    mainClass: className,
+                    args: ['--tests', `${className}.${testName}`],
+                    console: 'integratedTerminal',
+                    cwd: cwd
+                };
+
+            case 'coreclr':
+                // .NET test configuration (supports xUnit, NUnit, MSTest)
+                return {
+                    type: 'coreclr',
+                    request: 'launch',
+                    name: `DebugMCP .NET Test: ${testName}`,
+                    program: 'dotnet',
+                    args: [
+                        'test',
+                        '--filter', `FullyQualifiedName~${testName}`,
+                        '--no-build'
+                    ],
+                    console: 'integratedTerminal',
+                    cwd: cwd,
+                    stopAtEntry: false
+                };
+
+            default:
+                // For unsupported languages, fall back to running the entire file
+                // but include a warning in the name
+                return {
+                    type: language,
+                    request: 'launch',
+                    name: `DebugMCP Launch (test filtering not supported for ${language})`,
+                    program: fileFullPath,
+                    console: 'integratedTerminal',
+                    cwd: cwd,
+                    stopOnEntry: false
+                };
         }
     }
 
