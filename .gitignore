@@ -420,3 +420,4 @@ FodyWeavers.xsd
 
 node_modules/*
 out/*
+.vscode-test/*

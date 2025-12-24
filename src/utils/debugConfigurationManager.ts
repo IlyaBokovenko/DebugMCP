@@ -170,7 +170,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
         const cwd = path.dirname(fileFullPath);
         
         // Build test-specific configurations based on language
-        if (testName && detectedLanguage != 'coreclr') {
+        if (testName && detectedLanguage !== 'coreclr') {
             return await this.createTestDebugConfig(detectedLanguage, fileFullPath, cwd, testName);
         }
 
