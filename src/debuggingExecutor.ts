@@ -7,7 +7,7 @@ import { DebugState } from './debugState';
  * Interface for debugging execution operations
  */
 export interface IDebuggingExecutor {
-    startDebugging(workspaceFolder: vscode.WorkspaceFolder, config: vscode.DebugConfiguration): Promise<boolean>;
+    startDebugging(workingDirectory: string, config: vscode.DebugConfiguration): Promise<boolean>;
     stopDebugging(session?: vscode.DebugSession): Promise<void>;
     stepOver(): Promise<void>;
     stepInto(): Promise<void>;
@@ -34,7 +34,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
      * Start a debugging session
      */
     public async startDebugging(
-        workspaceFolder: vscode.WorkspaceFolder, 
+        workingDirectory: string, 
         config: vscode.DebugConfiguration
     ): Promise<boolean> {
         try {
@@ -45,6 +45,7 @@ export class DebuggingExecutor implements IDebuggingExecutor {
                 vscode.commands.executeCommand('testing.debugCurrentFile');
                 return true;
             }
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(workingDirectory));
             return await vscode.debug.startDebugging(workspaceFolder, config);
         } catch (error) {
             throw new Error(`Failed to start debugging: ${error}`);

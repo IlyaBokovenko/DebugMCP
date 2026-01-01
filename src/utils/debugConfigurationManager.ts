@@ -9,12 +9,12 @@ import * as fs from 'fs';
  */
 export interface IDebugConfigurationManager {
     getDebugConfig(
-        workspaceFolder: vscode.WorkspaceFolder, 
+        workingDirectory: string, 
         fileFullPath: string, 
         configurationName?: string,
         testName?: string
     ): Promise<vscode.DebugConfiguration>;
-    promptForConfiguration(workspaceFolder: vscode.WorkspaceFolder): Promise<string | undefined>;
+    promptForConfiguration(workingDirectory: string): Promise<string | undefined>;
     detectLanguageFromFilePath(fileFullPath: string): string;
 }
 
@@ -28,23 +28,25 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
      * Get or create a debug configuration for the given parameters
      */
     public async getDebugConfig(
-        workspaceFolder: vscode.WorkspaceFolder,
+        workingDirectory: string,
         fileFullPath: string,
         configurationName?: string,
         testName?: string
     ): Promise<vscode.DebugConfiguration> {
         if (configurationName === DebugConfigurationManager.AUTO_LAUNCH_CONFIG) {
-            return this.createDefaultDebugConfig(fileFullPath, workspaceFolder, testName);
+            return this.createDefaultDebugConfig(fileFullPath, workingDirectory, testName);
         }
 
         try {
             // Look for launch.json in .vscode folder
-            const launchJsonPath = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'launch.json');
+            const launchJsonPath = vscode.Uri.joinPath(vscode.Uri.file(workingDirectory), '.vscode', 'launch.json');
             const launchJsonDoc = await vscode.workspace.openTextDocument(launchJsonPath);
             const launchJsonContent = launchJsonDoc.getText();
             
-            // Parse the JSON (removing comments first)
-            const cleanJson = launchJsonContent.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+            // Parse the JSON (removing comments and trailing commas first)
+            let cleanJson = launchJsonContent.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+            // Remove trailing commas before closing brackets/braces
+            cleanJson = cleanJson.replace(/,(\s*[}\]])/g, '$1');
             const launchConfig = JSON.parse(cleanJson);
             
             if (launchConfig.configurations && Array.isArray(launchConfig.configurations) && launchConfig.configurations.length > 0) {
@@ -67,16 +69,16 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
         }
 
         // Fallback: always return a default configuration if nothing else matched
-        return this.createDefaultDebugConfig(fileFullPath, workspaceFolder, testName);
+        return this.createDefaultDebugConfig(fileFullPath, workingDirectory, testName);
     }
 
     /**
      * Prompt user to select a debug configuration
      */
-    public async promptForConfiguration(workspaceFolder: vscode.WorkspaceFolder): Promise<string | undefined> {
+    public async promptForConfiguration(workingDirectory: string): Promise<string | undefined> {
         try {
             // Look for launch.json in .vscode folder
-            const launchJsonPath = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'launch.json');
+            const launchJsonPath = vscode.Uri.joinPath(vscode.Uri.file(workingDirectory), '.vscode', 'launch.json');
             
             let configurations: any[] = [];
             
@@ -84,8 +86,10 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
                 const launchJsonDoc = await vscode.workspace.openTextDocument(launchJsonPath);
                 const launchJsonContent = launchJsonDoc.getText();
                 
-                // Parse the JSON (removing comments first)
-                const cleanJson = launchJsonContent.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+                // Parse the JSON (removing comments and trailing commas first)
+                let cleanJson = launchJsonContent.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+                // Remove trailing commas before closing brackets/braces
+                cleanJson = cleanJson.replace(/,(\s*[}\]])/g, '$1');
                 const launchConfig = JSON.parse(cleanJson);
                 
                 if (launchConfig.configurations && Array.isArray(launchConfig.configurations)) {
@@ -163,7 +167,7 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
      */
     private async createDefaultDebugConfig(
         fileFullPath: string, 
-        workspaceFolder: vscode.WorkspaceFolder,
+        workingDirectory: string,
         testName?: string
     ): Promise<vscode.DebugConfiguration> {
         const detectedLanguage = this.detectLanguageFromFilePath(fileFullPath);
@@ -255,8 +259,10 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
             const launchJsonDoc = await vscode.workspace.openTextDocument(launchJsonPath);
             const launchJsonContent = launchJsonDoc.getText();
             
-            // Parse the JSON (removing comments first)
-            const cleanJson = launchJsonContent.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+            // Parse the JSON (removing comments and trailing commas first)
+            let cleanJson = launchJsonContent.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+            // Remove trailing commas before closing brackets/braces
+            cleanJson = cleanJson.replace(/,(\s*[}\]])/g, '$1');
             const launchConfig = JSON.parse(cleanJson);
             
             if (launchConfig.configurations && Array.isArray(launchConfig.configurations)) {

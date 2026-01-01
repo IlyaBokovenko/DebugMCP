@@ -84,10 +84,10 @@ export class DebugMCPServer {
                          '\n\n⚠️ CRITICAL: Before using this tool, first read debugmcp://docs/debug_instructions resource!',
             parameters: z.object({
                 fileFullPath: z.string().describe('Full path to the source code file to debug'),
-                workingDirectory: z.string().optional().describe('Working directory for the debug session (optional)'),
+                workingDirectory: z.string().describe('Working directory for the debug session'),
                 testName: z.string().optional().describe('Name of the specific test name to debug.'),
             }),
-            execute: async (args: { fileFullPath: string; workingDirectory?: string; testName?: string }) => {
+            execute: async (args: { fileFullPath: string; workingDirectory: string; testName?: string }) => {
                 return await this.debuggingHandler.handleStartDebugging(args);
             },
         });

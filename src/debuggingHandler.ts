@@ -10,7 +10,7 @@ import { logger } from './utils/logger';
  * Interface for debugging handler operations
  */
 export interface IDebuggingHandler {
-    handleStartDebugging(args: { fileFullPath: string; configurationName?: string; testName?: string }): Promise<string>;
+    handleStartDebugging(args: { fileFullPath: string; workingDirectory: string; testName?: string }): Promise<string>;
     handleStopDebugging(): Promise<string>;
     handleStepOver(): Promise<string>;
     handleStepInto(): Promise<string>;
@@ -46,28 +46,23 @@ export class DebuggingHandler implements IDebuggingHandler {
      */
     public async handleStartDebugging(args: { 
         fileFullPath: string; 
-        configurationName?: string;
+        workingDirectory: string;
         testName?: string;
     }): Promise<string> {
-        const { fileFullPath, testName } = args;
+        const { fileFullPath, workingDirectory, testName } = args;
         
-        try {
-            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-            if (!workspaceFolder) {
-                throw new Error('No workspace folder found');
-            }
-            
-            let selectedConfigName = await this.configManager.promptForConfiguration(workspaceFolder);
+        try {            
+            let selectedConfigName = await this.configManager.promptForConfiguration(workingDirectory);
             
             // Get debug configuration from launch.json or create default
             const debugConfig = await this.configManager.getDebugConfig(
-                workspaceFolder, 
+                workingDirectory, 
                 fileFullPath, 
                 selectedConfigName,
                 testName
             );
 
-            const started = await this.executor.startDebugging(workspaceFolder, debugConfig);
+            const started = await this.executor.startDebugging(workingDirectory, debugConfig);
             if (started) {
                 // Wait for debug session to become active using exponential backoff
                 const sessionActive = await this.waitForActiveDebugSession();
