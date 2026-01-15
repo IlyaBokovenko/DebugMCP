@@ -44,7 +44,7 @@ Include in each source file:
 |---------|-------------|
 | `npm run compile` | Compile TypeScript to `out/` |
 | `npm run lint` | Run ESLint on `src/` |
-| `npm test` | Run all tests (compiles + lints first) |
+| `npm test` | Run all tests (`src/test/*.test.ts`) |
 | `npm run watch` | Compile in watch mode |
 
 ## Code Style & Conventions
@@ -56,7 +56,7 @@ Include in each source file:
 - **Error Handling**: try-catch with descriptive messages, throw `Error` objects
 - **Formatting**: Semicolons, curly braces for all control structures, tabs for indentation
 - **Async**: async/await, exponential backoff for retries
-- **Logging**: Use `logger` from `./utils/logger` (not `console.log`)
+- **Logging**: Use `logger` from `./utils/logger` (not `console.log`). Simple wrapper providing `info`, `warn`, `error` methods with consistent formatting.
 - **VS Code API**: Import as `import * as vscode from 'vscode'`
 
 ## Key Dependencies
@@ -77,3 +77,14 @@ Include in each source file:
 |---------|---------|-------------|
 | `debugmcp.serverPort` | 3001 | MCP server port |
 | `debugmcp.timeoutInSeconds` | 180 | Operation timeout |
+
+## Documentation Resources
+
+The `docs/` folder contains resources exposed to AI agents via MCP:
+
+| File | Purpose |
+|------|---------|
+| `debug_instructions.md` | Core debugging workflow guide for AI agents |
+| `troubleshooting/*.md` | Language-specific debugging tips (Python, JavaScript, Java, C#) |
+
+These files are loaded at runtime by `DebugMCPServer` and served as MCP resources.

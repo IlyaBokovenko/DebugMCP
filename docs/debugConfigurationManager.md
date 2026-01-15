@@ -35,6 +35,8 @@ Maps file extensions to debug types:
 - `.cpp/.cc/.c` → `cppdbg`
 - `.go` → `go`
 - `.rs` → `lldb`
+- `.php` → `php`
+- `.rb` → `ruby`
 
 ### Test Framework Support
 
