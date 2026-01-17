@@ -393,6 +393,20 @@ export class ConfigLoader implements IDebugConfigurationManager {
 	}
 
 	/**
+	 * Get the loaded configuration object
+	 */
+	public getConfig(): StandaloneConfig | null {
+		return this.config;
+	}
+
+	/**
+	 * Get the path to the configuration file
+	 */
+	public getConfigPath(): string {
+		return this.configPath;
+	}
+
+	/**
 	 * Create a default configuration file
 	 */
 	public static createDefaultConfig(workspaceFolder: string): StandaloneConfig {

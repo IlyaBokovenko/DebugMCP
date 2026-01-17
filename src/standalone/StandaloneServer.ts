@@ -97,8 +97,20 @@ async function main(): Promise<void> {
 		// Create the standalone backend
 		const backend = new StandaloneDAPBackend(configLoader, timeout * 1000);
 
-		// Create and initialize the MCP server
-		const server = new DebugMCPServer(port, timeout, backend, configLoader);
+		// Get loaded config for instruction builder
+		const standaloneConfig = configLoader.getConfig();
+		const workspaceFolder = configLoader.getWorkspaceFolder();
+
+		// Create and initialize the MCP server with config for dynamic instructions
+		const server = new DebugMCPServer(
+			port,
+			timeout,
+			backend,
+			configLoader,
+			workspaceFolder,
+			standaloneConfig || undefined,
+			configPath
+		);
 		await server.initialize();
 
 		// Start the server

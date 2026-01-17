@@ -7,6 +7,8 @@ import { IDebugBackend } from './core/IDebugBackend';
 import { IDebugConfigurationManager } from './core/IDebugConfigurationManager';
 import { DebuggingHandler, IDebuggingHandler } from './debuggingHandler';
 import { logger } from './utils/logger';
+import { InstructionBuilder } from './standalone/InstructionBuilder';
+import { StandaloneConfig } from './standalone/ConfigLoader';
 
 // Dynamic import for FastMCP since it's an ES module
 let FastMCP: any;
@@ -37,6 +39,10 @@ export class DebugMCPServer {
 	private port: number;
 	private initialized: boolean = false;
 	private debuggingHandler: IDebuggingHandler;
+	private instructionBuilder: InstructionBuilder | null = null;
+	private standaloneConfig: StandaloneConfig | null = null;
+	private configPath: string | null = null;
+	private workspaceFolder: string;
 
 	/**
 	 * Create a new DebugMCPServer instance
@@ -44,16 +50,25 @@ export class DebugMCPServer {
 	 * @param timeoutInSeconds Timeout for debugging operations
 	 * @param backend Debug backend implementation
 	 * @param configManager Configuration manager implementation
+	 * @param workspaceFolder Optional workspace folder for standalone mode
+	 * @param standaloneConfig Optional standalone configuration
+	 * @param configPath Optional path to the configuration file
 	 */
 	constructor(
 		port: number,
 		timeoutInSeconds: number,
 		backend: IDebugBackend,
-		configManager: IDebugConfigurationManager
+		configManager: IDebugConfigurationManager,
+		workspaceFolder?: string,
+		standaloneConfig?: StandaloneConfig,
+		configPath?: string
 	) {
 		// Initialize the debugging handler with injected dependencies
 		this.debuggingHandler = new DebuggingHandler(backend, configManager, timeoutInSeconds);
 		this.port = port;
+		this.workspaceFolder = workspaceFolder || process.cwd();
+		this.standaloneConfig = standaloneConfig || null;
+		this.configPath = configPath || null;
 	}
 
 	/**
@@ -233,21 +248,28 @@ export class DebugMCPServer {
 	 * Setup MCP resources for documentation
 	 */
 	private setupResources() {
+		// Initialize the instruction builder for dynamic instructions
+		const extensionPath = __dirname;
+		const docsPath = path.join(extensionPath, '..', 'docs');
+		this.instructionBuilder = new InstructionBuilder(docsPath, this.workspaceFolder);
+		this.instructionBuilder.setConfig(this.standaloneConfig, this.configPath);
+
 		// Add MCP resources for debugging documentation
 		this.server.addResource({
 			uri: 'debugmcp://docs/debug_instructions',
 			name: 'Debugging Instructions Guide',
-			description: 'Step-by-step instructions for debugging with DebugMCP',
+			description: 'Step-by-step instructions for debugging with DebugMCP, including configuration status and language-specific tips',
 			mimeType: 'text/markdown',
 			load: async () => {
-				const content = await this.loadMarkdownFile('debug_instructions.md');
+				// Use dynamic instruction builder for context-aware instructions
+				const content = await this.instructionBuilder!.buildInstructions();
 				return {
 					text: content
 				};
 			}
 		});
 
-		// Add language-specific resources
+		// Add language-specific resources (kept for backwards compatibility)
 		const languages = ['python', 'javascript', 'java', 'csharp'];
 		const languageTitles = {
 			'python': 'Python Debugging Tips',
@@ -269,6 +291,48 @@ export class DebugMCPServer {
 					};
 				}
 			});
+		});
+
+		// Add a new resource for configuration validation/status only
+		this.server.addResource({
+			uri: 'debugmcp://docs/config_status',
+			name: 'Debugger Configuration Status',
+			description: 'Current debugger configuration status and setup instructions for any missing or broken debuggers',
+			mimeType: 'text/markdown',
+			load: async () => {
+				const validation = await this.instructionBuilder!.validateConfiguration();
+				const lines: string[] = [
+					'# DebugMCP Configuration Status',
+					'',
+					`**Configuration Path:** \`${validation.configPath}\``,
+					`**Configuration Found:** ${validation.hasConfig ? '✅ Yes' : '❌ No'}`,
+					'',
+				];
+
+				if (validation.hasConfig) {
+					lines.push('## Configured Adapters', '');
+					for (const adapter of validation.adapters) {
+						const status = adapter.isValid ? '✅' : '❌';
+						lines.push(`### ${status} ${adapter.name}`);
+						if (adapter.issues.length > 0) {
+							lines.push('', '**Issues:**');
+							adapter.issues.forEach(issue => lines.push(`- ${issue}`));
+						}
+						if (adapter.setupInstructions) {
+							lines.push('', adapter.setupInstructions);
+						}
+						lines.push('');
+					}
+				} else {
+					lines.push(
+						'## No Configuration Found',
+						'',
+						'Run `npx debugmcp init` to create a configuration file.',
+					);
+				}
+
+				return { text: lines.join('\n') };
+			}
 		});
 	}
 
