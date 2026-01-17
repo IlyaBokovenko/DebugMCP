@@ -1,6 +1,9 @@
 # DebugMCP - Empowering AI Agents with Multi-Language Debugging Capabilities
 
-A VSCode extension that provides comprehensive multi-language debugging capabilities and automatically exposes itself as an MCP (Model Context Protocol) server for seamless integration with AI assistants.
+DebugMCP provides comprehensive multi-language debugging capabilities for AI assistants via the MCP (Model Context Protocol). It is available in two forms:
+
+1. **Standalone MCP Server** - Works with any MCP-compatible AI assistant (Claude Desktop, Cursor, etc.)
+2. **VS Code Extension** - Includes the MCP server built-in, plus provides an interactive debugging experience within VS Code
 
 > **📢 Beta Version Notice**: This is a beta version of DebugMCP maintained by [ozzafar@microsoft.com](mailto:ozzafar@microsoft.com) and [orbarila@microsoft.com](mailto:orbarila@microsoft.com). We welcome feedback and contributions to help improve this extension.
 
@@ -9,24 +12,31 @@ A VSCode extension that provides comprehensive multi-language debugging capabili
 [![Version](https://img.shields.io/badge/version-1.0.2-green.svg)](https://github.com/microsoft/DebugMCP)
 [![VS Marketplace](https://img.shields.io/badge/VS%20Marketplace-Install-blue.svg)](https://marketplace.visualstudio.com/items?itemName=ozzafar.debugmcpextension)
 
-## 🚀 Quick Install
-
-**[Install from VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ozzafar.debugmcpextension)** or use the direct link: `vscode:extension/ozzafar.debugmcpextension`
-
 ## Table of Contents
 - [Overview](#overview)
 - [Features](#features)
 - [Installation](#installation)
+  - [Standalone MCP Server](#standalone-mcp-server)
+  - [VS Code Extension](#vs-code-extension-installation)
+- [Configuration](#configuration)
+  - [DebugMCP Configuration](#debugmcp-configuration)
+  - [VS Code Extension Settings](#vs-code-extension-settings)
 - [Quick Start](#quick-start)
 - [Supported Languages](#supported-languages)
-- [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
 
 ## Overview
 
-DebugMCP bridges the gap between professional debugging and AI-assisted development by providing a powerful debugging interface that AI assistants can use to help you identify and fix issues in your code. DebugMCP enables AI assistants to perform sophisticated debugging operations on your behalf.
+DebugMCP bridges the gap between professional debugging and AI-assisted development by providing a powerful debugging interface that AI assistants can use to help you identify and fix issues in your code.
+
+| Option | Best For | What You Get |
+|--------|----------|--------------|
+| **Standalone MCP Server** | Claude Desktop, Cursor, or any MCP client | Full debugging capabilities via MCP protocol |
+| **VS Code Extension** | VS Code users with AI assistants (Copilot, Cline, Roo) | MCP server + interactive VS Code debugging UI |
+
+> **Note**: The VS Code extension includes the standalone MCP server functionality, so you don't need both.
 
 ## Features
 
@@ -63,7 +73,19 @@ DebugMCP follows systematic debugging practices for effective issue resolution:
 
 ## Installation
 
-### Quick Install Options
+### Standalone MCP Server
+
+For use with Claude Desktop, Cursor, or any MCP-compatible client (without VS Code):
+
+```bash
+npx debugmcp
+```
+
+Then configure your MCP client to connect (see [DebugMCP Configuration](#debugmcp-configuration)).
+
+### VS Code Extension Installation
+
+For VS Code users who want the full interactive debugging experience:
 
 **Option 1: Direct Link** (Fastest)
 - Click this link: [vscode:extension/ozzafar.debugmcpextension](vscode:extension/ozzafar.debugmcpextension)
@@ -81,12 +103,17 @@ DebugMCP follows systematic debugging practices for effective issue resolution:
 5. The extension automatically activates and registers as an MCP server
 
 ### Verification
-After installation, you should see:
-- DebugMCP extension in your installed extensions
-- MCP server automatically running on port 3001 (configurable)
-- Debug tools available to connected AI assistants
 
-> **📝 Note**: No additional debugging rule instructions are needed - the extension works out of the box.
+**For Standalone MCP Server:**
+- The server starts and displays connection information
+- Your MCP client can connect and list debugging tools
+
+**For VS Code Extension:**
+- DebugMCP extension appears in your installed extensions
+- MCP server automatically runs on port 3001 (configurable)
+- Debug tools are available to connected AI assistants
+
+> **📝 Note**: No additional debugging rule instructions are needed - DebugMCP works out of the box.
 
 > **💡 Tip**: Enable auto-approval for all debugmcp tools in your AI assistant to create seamless debugging workflows without constant approval interruptions.
 
@@ -114,59 +141,82 @@ DebugMCP supports debugging for the following languages with their respective VS
 
 ## Configuration
 
-### MCP Server Configuration (Recommended)
+### DebugMCP Configuration
 
-The extension runs an MCP server automatically. It will pop up a message to auto-register the MCP server in your AI assistant.
+Configure your MCP client to connect to DebugMCP. The configuration depends on your AI assistant:
 
-### Manual MCP Server Registration (Optional)
+#### Claude Desktop
 
-#### Cline
-Add to your Cline settings or `cline_mcp_settings.json`:
+Add to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+
 ```json
 {
   "mcpServers": {
     "debugmcp": {
-      "transport": "sse",
-      "url": "http://localhost:3001/sse",
-      "description": "DebugMCP - AI-powered debugging assistant"
+      "command": "npx",
+      "args": ["debugmcp"]
     }
   }
 }
 ```
 
-#### GitHub Copilot
-Add to your Copilot workspace settings (`.vscode/settings.json`):
+#### Cursor
+
+Add to your Cursor MCP settings:
+
 ```json
 {
-  "github.copilot.mcp.servers": {
+  "mcpServers": {
     "debugmcp": {
-      "type": "sse",
-      "url": "http://localhost:3001/sse",
-      "description": "DebugMCP - Multi-language debugging support"
+      "command": "npx",
+      "args": ["debugmcp"]
     }
   }
 }
 ```
 
-#### Roo Code
-Add to Roo's MCP settings:
+#### Cline
+
+Add to your Cline settings or `cline_mcp_settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "debugmcp": {
+      "command": "npx",
+      "args": ["debugmcp"]
+    }
+  }
+}
+```
+
+#### OpenCode
+
+Add to your OpenCode config file (`~/.config/opencode/config.json`):
+
 ```json
 {
   "mcp": {
-    "servers": {
-      "debugmcp": {
-        "type": "sse",
-        "url": "http://localhost:3001/sse",
-        "description": "DebugMCP - Debugging tools for AI assistants"
-      }
+    "debugmcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["debugmcp"]
     }
   }
 }
 ```
 
-### Extension Settings
+---
 
-Configure DebugMCP behavior in VSCode settings:
+### VS Code Extension Settings
+
+> **Note**: These settings only apply when using the VS Code extension. They configure the built-in MCP server that the extension runs automatically.
+
+The VS Code extension includes the MCP server and exposes it via SSE (Server-Sent Events) for AI assistants running inside VS Code.
+
+#### Extension Configuration
+
+Configure DebugMCP behavior in VS Code settings (`.vscode/settings.json` or user settings):
 
 ```json
 {
@@ -179,6 +229,59 @@ Configure DebugMCP behavior in VSCode settings:
 |---------|---------|-------------|
 | `debugmcp.serverPort` | `3001` | Port number for the MCP server |
 | `debugmcp.timeoutInSeconds` | `180` | Timeout for debugging operations |
+
+#### Connecting VS Code AI Assistants
+
+When using the VS Code extension, AI assistants connect via SSE to the built-in server:
+
+**GitHub Copilot**
+
+Add to your workspace settings (`.vscode/settings.json`):
+
+```json
+{
+  "github.copilot.mcp.servers": {
+    "debugmcp": {
+      "type": "sse",
+      "url": "http://localhost:3001/sse"
+    }
+  }
+}
+```
+
+**Cline (in VS Code)**
+
+Add to Cline MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "debugmcp": {
+      "transport": "sse",
+      "url": "http://localhost:3001/sse"
+    }
+  }
+}
+```
+
+**Roo Code**
+
+Add to Roo's MCP settings:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "debugmcp": {
+        "type": "sse",
+        "url": "http://localhost:3001/sse"
+      }
+    }
+  }
+}
+```
+
+> **Note**: The extension will prompt to auto-register the MCP server with your AI assistant on first activation.
 
 
 ## Troubleshooting
