@@ -9,12 +9,13 @@ import * as fs from 'fs';
  */
 export interface IDebugConfigurationManager {
     getDebugConfig(
-        workingDirectory: string, 
-        fileFullPath: string, 
+        workingDirectory: string,
+        fileFullPath: string,
         configurationName?: string,
         testName?: string
     ): Promise<vscode.DebugConfiguration>;
     promptForConfiguration(workingDirectory: string): Promise<string | undefined>;
+    autoSelectConfiguration(workingDirectory: string): Promise<string>;
     detectLanguageFromFilePath(fileFullPath: string): string;
 }
 
@@ -134,6 +135,34 @@ export class DebugConfigurationManager implements IDebugConfigurationManager {
             console.log('Error prompting for configuration:', error);
             throw error;
         }
+    }
+
+    /**
+     * Automatically select a debug configuration without user interaction.
+     * Uses the first available configuration from launch.json, or falls back
+     * to the auto-detected default configuration.
+     */
+    public async autoSelectConfiguration(workingDirectory: string): Promise<string> {
+        try {
+            const launchJsonPath = vscode.Uri.joinPath(vscode.Uri.file(workingDirectory), '.vscode', 'launch.json');
+            const launchJsonDoc = await vscode.workspace.openTextDocument(launchJsonPath);
+            const launchJsonContent = launchJsonDoc.getText();
+
+            let cleanJson = launchJsonContent.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+            cleanJson = cleanJson.replace(/,(\s*[}\]])/g, '$1');
+            const launchConfig = JSON.parse(cleanJson);
+
+            if (launchConfig.configurations && Array.isArray(launchConfig.configurations) && launchConfig.configurations.length > 0) {
+                const name = launchConfig.configurations[0].name || 'Unnamed Configuration';
+                console.log(`Auto-selected debug configuration: '${name}'`);
+                return name;
+            }
+        } catch (error) {
+            console.log('Could not read launch.json for auto-select, using default:', error);
+        }
+
+        console.log(`Auto-selected default configuration: '${DebugConfigurationManager.AUTO_LAUNCH_CONFIG}'`);
+        return DebugConfigurationManager.AUTO_LAUNCH_CONFIG;
     }
 
     /**

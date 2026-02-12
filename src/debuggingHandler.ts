@@ -52,7 +52,7 @@ export class DebuggingHandler implements IDebuggingHandler {
         const { fileFullPath, workingDirectory, testName } = args;
         
         try {            
-            let selectedConfigName = await this.configManager.promptForConfiguration(workingDirectory);
+            let selectedConfigName = await this.configManager.autoSelectConfiguration(workingDirectory);
             
             // Get debug configuration from launch.json or create default
             const debugConfig = await this.configManager.getDebugConfig(
