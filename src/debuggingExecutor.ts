@@ -316,24 +316,11 @@ export class DebuggingExecutor implements IDebuggingExecutor {
      * Check if there's an active debug session that is ready for debugging operations
      */
     public async hasActiveSession(): Promise<boolean> {
-        // Quick check first - no session at all
-        if (!vscode.debug.activeDebugSession) {
-            return false;
-        }
-
-        try {
-            // Get the current debug state and check if it has location information
-            // This is the most reliable way to determine if the debugger is truly ready
-            const debugState = await this.getCurrentDebugState();
-            
-            // A session is ready when it has location info (file name and line number)
-            // This means the debugger has attached and we can see where we are in the code
-            return debugState.sessionActive && debugState.hasLocationInfo();
-        } catch (error) {
-            // Any error means session isn't ready (e.g., Python still initializing)
-            console.log('Session readiness check failed:', error);
-            return false;
-        }
+        // Only check for an active debug session object.
+        // Don't require location info — the session is valid even when the program
+        // is running (not paused at a breakpoint). Location info is only available
+        // when execution is paused, but commands like continue/stop should still work.
+        return !!vscode.debug.activeDebugSession;
     }
 
     /**
