@@ -205,14 +205,18 @@ export class DebuggingHandler implements IDebuggingHandler {
             const beforeState = await this.executor.getCurrentDebugState(this.numNextLines);
 
             await this.executor.continue();
-            
-            // Wait for debugger state to change
-            const afterState = await this.waitForStateChange(beforeState);
-            
-            let result = this.formatDebugState(afterState);
 
-            
-            return result;
+            // Wait briefly for a breakpoint to be hit. Unlike step commands,
+            // continue may run for an indefinite time, so we use a short timeout
+            // to avoid blocking the MCP caller.
+            const continueTimeout = 2; // seconds
+            const afterState = await this.waitForStateChange(beforeState, continueTimeout);
+
+            if (this.hasStateChanged(beforeState, afterState) && afterState.hasLocationInfo()) {
+                return this.formatDebugState(afterState);
+            }
+
+            return 'Program is running. Use continue_execution again to check if a breakpoint was hit, or use other tools to inspect state when paused.';
         } catch (error) {
             throw new Error(`Error executing continue: ${error}`);
         }
@@ -502,13 +506,14 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Wait for debugger state to change from the initial state using exponential backoff
      */
-    private async waitForStateChange(beforeState: DebugState): Promise<DebugState> {
+    private async waitForStateChange(beforeState: DebugState, timeoutOverride?: number): Promise<DebugState> {
         const baseDelay = 1000; // Start with 1 second
         const maxDelay = 1000; // Cap at 1 second
         const startTime = Date.now();
         let attempt = 0;
-                
-        while (Date.now() - startTime < this.timeoutInSeconds * 1000) {
+        const timeout = (timeoutOverride ?? this.timeoutInSeconds) * 1000;
+
+        while (Date.now() - startTime < timeout) {
             const currentState = await this.executor.getCurrentDebugState(this.numNextLines);
             
             if (this.hasStateChanged(beforeState, currentState)) {
