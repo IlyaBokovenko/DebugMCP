@@ -103,6 +103,15 @@ Before stopping your debug session, ensure you can answer:
     3. Restart the debug session to investigate the deeper cause
     4. Continue until you find the root cause
 
+## Call Stack Inspection
+
+Use `get_call_stack` to view the full stack trace at any pause point. This shows all stack frames with function names, source files, and line numbers — essential for understanding the execution path that led to the current point.
+
+- Use it to understand **who called** the current function
+- Trace the chain of calls from entry point to the current location
+- Identify unexpected callers or recursion paths
+- Accepts optional `maxFrames` parameter (default: 20)
+
 ## Breakpoint Strategy Guide
 
 🎯 **BREAKPOINT STRATEGY:**
