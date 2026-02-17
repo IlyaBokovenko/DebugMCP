@@ -202,19 +202,30 @@ export class DebuggingHandler implements IDebuggingHandler {
                 throw new Error('Debug session is not ready. Please wait for initialization to complete.');
             }
 
-            // Get the state before executing the command
-            const beforeState = await this.executor.getCurrentDebugState(this.numNextLines);
-
             await this.executor.continue();
 
-            // Wait briefly for a breakpoint to be hit. Unlike step commands,
-            // continue may run for an indefinite time, so we use a short timeout
-            // to avoid blocking the MCP caller.
-            const continueTimeout = 2; // seconds
-            const afterState = await this.waitForStateChange(beforeState, continueTimeout);
+            // Wait for program to start running (activeStackItem becomes unavailable)
+            const runDeadline = Date.now() + 500;
+            while (Date.now() < runDeadline) {
+                const item = vscode.debug.activeStackItem;
+                if (!item || !('frameId' in item)) {
+                    break; // Program started running
+                }
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
 
-            if (this.hasStateChanged(beforeState, afterState) && afterState.hasLocationInfo()) {
-                return this.formatDebugState(afterState);
+            // Now wait for program to pause again (hit a breakpoint)
+            const continueTimeout = 2; // seconds
+            const pauseDeadline = Date.now() + continueTimeout * 1000;
+            while (Date.now() < pauseDeadline) {
+                const item = vscode.debug.activeStackItem;
+                if (item && 'frameId' in item) {
+                    const state = await this.executor.getCurrentDebugState(this.numNextLines);
+                    if (state.hasLocationInfo()) {
+                        return this.formatDebugState(state);
+                    }
+                }
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
 
             return 'Program is running. Use continue_execution again to check if a breakpoint was hit, or use other tools to inspect state when paused.';
