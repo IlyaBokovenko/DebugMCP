@@ -19,6 +19,7 @@ export interface IDebuggingExecutor {
     getCurrentDebugState(numNextLines: number): Promise<DebugState>;
     getVariables(frameId: number, scope?: 'local' | 'global' | 'all'): Promise<any>;
     evaluateExpression(expression: string, frameId: number): Promise<any>;
+    getCallStack(threadId: number, maxFrames: number): Promise<any>;
     getBreakpoints(): readonly vscode.Breakpoint[];
     clearAllBreakpoints(): void;
     hasActiveSession(): Promise<boolean>;
@@ -294,6 +295,28 @@ export class DebuggingExecutor implements IDebuggingExecutor {
         }
     }
 
+
+    /**
+     * Get call stack from the current debug context
+     */
+    public async getCallStack(threadId: number, maxFrames: number): Promise<any> {
+        try {
+            const activeSession = vscode.debug.activeDebugSession;
+            if (!activeSession) {
+                throw new Error('No active debug session');
+            }
+
+            const response = await activeSession.customRequest('stackTrace', {
+                threadId: threadId,
+                startFrame: 0,
+                levels: maxFrames
+            });
+
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to get call stack: ${error}`);
+        }
+    }
 
     /**
      * Get all active breakpoints

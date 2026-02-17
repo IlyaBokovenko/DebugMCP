@@ -23,6 +23,7 @@ export interface IDebuggingHandler {
     handleListBreakpoints(): Promise<string>;
     handleGetVariables(args: { scope?: 'local' | 'global' | 'all' }): Promise<string>;
     handleEvaluateExpression(args: { expression: string }): Promise<string>;
+    handleGetCallStack(args: { maxFrames?: number }): Promise<string>;
 }
 
 /**
@@ -422,6 +423,49 @@ export class DebuggingHandler implements IDebuggingHandler {
             }
         } catch (error) {
             throw new Error(`Error evaluating expression: ${error}`);
+        }
+    }
+
+    /**
+     * Get call stack from current debug context
+     */
+    public async handleGetCallStack(args: { maxFrames?: number }): Promise<string> {
+        const { maxFrames = 20 } = args;
+
+        try {
+            if (!(await this.executor.hasActiveSession())) {
+                throw new Error('Debug session is not ready. Start debugging first and ensure execution is paused.');
+            }
+
+            const activeStackItem = vscode.debug.activeStackItem;
+            if (!activeStackItem || !('threadId' in activeStackItem)) {
+                throw new Error('No active stack frame. Make sure execution is paused at a breakpoint.');
+            }
+
+            const stackData = await this.executor.getCallStack(activeStackItem.threadId, maxFrames);
+
+            if (!stackData || !stackData.stackFrames || stackData.stackFrames.length === 0) {
+                return 'No stack frames available.';
+            }
+
+            let output = 'Call Stack:\n==========\n\n';
+
+            for (let i = 0; i < stackData.stackFrames.length; i++) {
+                const frame = stackData.stackFrames[i];
+                const name = frame.name || '<unknown>';
+                const source = frame.source?.name || frame.source?.path || '<unknown source>';
+                const line = frame.line || '?';
+                const marker = i === 0 ? '>' : ' ';
+                output += `${marker} #${i} ${name} at ${source}:${line}\n`;
+            }
+
+            if (stackData.totalFrames && stackData.totalFrames > stackData.stackFrames.length) {
+                output += `\n... ${stackData.totalFrames - stackData.stackFrames.length} more frames\n`;
+            }
+
+            return output;
+        } catch (error) {
+            throw new Error(`Error getting call stack: ${error}`);
         }
     }
 

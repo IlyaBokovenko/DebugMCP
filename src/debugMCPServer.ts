@@ -206,6 +206,18 @@ export class DebugMCPServer {
             },
         });
 
+        // Get call stack tool
+        this.server.addTool({
+            name: 'get_call_stack',
+            description: 'Get the current call stack (stack trace). Shows all stack frames with function names, source files, and line numbers. Essential for understanding the execution path that led to the current point.',
+            parameters: z.object({
+                maxFrames: z.number().optional().describe('Maximum number of stack frames to retrieve (default: 20)'),
+            }),
+            execute: async (args: { maxFrames?: number }) => {
+                return await this.debuggingHandler.handleGetCallStack(args);
+            },
+        });
+
         // Evaluate expression tool
         this.server.addTool({
             name: 'evaluate_expression',
