@@ -45,15 +45,16 @@ export class DebuggingHandler implements IDebuggingHandler {
     /**
      * Start a debugging session
      */
-    public async handleStartDebugging(args: { 
-        fileFullPath: string; 
+    public async handleStartDebugging(args: {
+        fileFullPath: string;
         workingDirectory: string;
         testName?: string;
+        configurationName?: string;
     }): Promise<string> {
-        const { fileFullPath, workingDirectory, testName } = args;
-        
-        try {            
-            let selectedConfigName = await this.configManager.autoSelectConfiguration(workingDirectory);
+        const { fileFullPath, workingDirectory, testName, configurationName } = args;
+
+        try {
+            let selectedConfigName = configurationName ?? await this.configManager.autoSelectConfiguration(workingDirectory);
             
             // Get debug configuration from launch.json or create default
             const debugConfig = await this.configManager.getDebugConfig(
